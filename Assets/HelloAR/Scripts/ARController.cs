@@ -20,6 +20,7 @@ public class ARController : MonoBehaviour
 	private LocationInfo lastData;
 	private int qtdObjetos = 0;
 	private float anguloNorte = 0;
+	private Vector3 objPos;
 
 	List<string> objetosProcessados = new List<string>();
 
@@ -72,10 +73,13 @@ public class ARController : MonoBehaviour
 				obj.objeto.transform.parent = anchor.transform;
 				obj.posicionado = true;
 				obj.objeto.SetActive(true);
+				objPos = obj.objeto.transform.position;
 
-				Debug.DrawLine(mainCamera.transform.position, obj.objeto.transform.position, Color.red);
 				qtdObjetos++;
 			}
+			
+			if (qtdObjetos > 0)
+				Debug.DrawLine(mainCamera.transform.position, objPos, Color.red);
 
 			Display(angulo, distancia);
 		}
@@ -118,7 +122,7 @@ public class ARController : MonoBehaviour
 
 	private void Display(float angulo, float distancia)
 	{
-		Log.text = $"Latitude: {LatitudeAtual()}\r\nLongitude: {LongitudeAtual()}\r\nObjetos posicionados: {qtdObjetos}\r\nUltimo objeto posicionado: {angulo}º - {distancia}m\r\nObjetos disponiveis: {store.ListaObjetos.Count}";
+		Log.text = $"Angulo norte: {anguloNorte}\r\nLatitude: {LatitudeAtual()}\r\nLongitude: {LongitudeAtual()}\r\nObjetos posicionados: {qtdObjetos}\r\nUltimo objeto posicionado: {angulo}º - {distancia}m\r\nObjetos disponiveis: {store.ListaObjetos.Count}";
 		//if (!erro)
 		//	Log.text = $"Origem\r\nLatitude: {latOrigemStr}\r\nLongitude: {longOrigemStr}\r\nTimestamp: {timestampOrigemStr}\r\n\r\nDestino\r\nLatitude: {latDestinoStr}\r\nLongitude: {longDestinoStr}\r\nTimestamp: {timestampDestinoStr}\r\n\r\nDistância: {distanciaStr}\r\nÂngulo: {anguloStr}\r\n\r\nÂngulo norte: {anguloNorte}\r\nState: {state} ({(processando ? "Processando..." : "Pronto!")})";
 	}
