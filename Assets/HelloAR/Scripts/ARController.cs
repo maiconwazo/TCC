@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 #if UNITY_EDITOR
+	using Input = GoogleARCore.InstantPreviewInput;
 #endif
 
 public class ARController : MonoBehaviour
@@ -16,11 +17,17 @@ public class ARController : MonoBehaviour
 	public Text Log;
 	public WSObjectsController store;
 	public Camera mainCamera;
+	public LineRenderer line;
 
 	private LocationInfo lastData;
-	private int qtdObjetos = 0;
 	private float anguloNorte = 0;
 	private Vector3 objPos;
+	private float norteUsado = 0;
+
+	private float anguloCalculado = 0;
+	private float anguloFinal = 0;
+	private float distancia = 0;
+
 
 	List<string> objetosProcessados = new List<string>();
 
@@ -57,31 +64,43 @@ public class ARController : MonoBehaviour
 			anguloNorte = UnityEngine.Input.compass.magneticHeading;
 			lastData = UnityEngine.Input.location.lastData;
 
-			float angulo = 0;
-			float distancia = 0;
 			var objetosProximos = store.retornarListaObjetosProximo(LatitudeAtual(), LongitudeAtual());
+
+			Session.GetTrackables<DetectedPlane>(m_NewTrackedPlanes, TrackableQueryFilter.New);
+			foreach(var plane in m_NewTrackedPlanes)
+			{
+				var parede = Instantiate(GridPrefab, Vector3.zero, Quaternion.identity, transform);
+				parede.GetComponent<GridVisualiser>().Initialize(plane);
+			}
+
 			foreach (var obj in objetosProximos)
 			{
-				angulo = calcularAngulo(LatitudeAtual(), LongitudeAtual(), obj.latitude, obj.longitude) - anguloNorte;
-				distancia = calcularDistancia(LatitudeAtual(), LongitudeAtual(), obj.latitude, obj.longitude);
-				Vector3 novoVetor = Quaternion.AngleAxis(angulo, Vector3.up) * Vector3.forward * distancia;
+				anguloCalculado = calcularAngulo(LatitudeAtual(), LongitudeAtual(), obj.latitude, obj.longitude);
+				anguloFinal = anguloCalculado - anguloNorte;
+
+				if (anguloFinal < 0)
+					anguloFinal += 360;
+
+				distancia = 1;// calcularDistancia(LatitudeAtual(), LongitudeAtual(), obj.latitude, obj.longitude);
+				Vector3 novoVetor = Quaternion.AngleAxis(anguloFinal, Vector3.up) * Vector3.forward * distancia;
 
 				Pose pose = new Pose(novoVetor, Quaternion.identity);
 				Anchor anchor = Session.CreateAnchor(pose);
+				obj.objeto.transform.localScale *= 0.1f;
+				obj.objeto.transform.rotation = Quaternion.identity;
 				obj.objeto.transform.position = pose.position;
-				obj.objeto.transform.rotation = pose.rotation;
 				obj.objeto.transform.parent = anchor.transform;
 				obj.posicionado = true;
 				obj.objeto.SetActive(true);
 				objPos = obj.objeto.transform.position;
+				norteUsado = anguloNorte;
 
-				qtdObjetos++;
+				line.gameObject.SetActive(true);
+				line.SetPosition(0, mainCamera.transform.position);
+				line.SetPosition(1, objPos);
 			}
-			
-			if (qtdObjetos > 0)
-				Debug.DrawLine(mainCamera.transform.position, objPos, Color.red);
 
-			Display(angulo, distancia);
+			Display();
 		}
 		catch (Exception e)
 		{
@@ -120,9 +139,9 @@ public class ARController : MonoBehaviour
 		return anguloNorte;
 	}
 
-	private void Display(float angulo, float distancia)
+	private void Display()
 	{
-		Log.text = $"Angulo norte: {anguloNorte}\r\nLatitude: {LatitudeAtual()}\r\nLongitude: {LongitudeAtual()}\r\nObjetos posicionados: {qtdObjetos}\r\nUltimo objeto posicionado: {angulo}º - {distancia}m\r\nObjetos disponiveis: {store.ListaObjetos.Count}";
+		Log.text = $"Angulo norte: {anguloNorte}\r\nNorte utilizado: {norteUsado}\r\nAngulo calculado: {anguloCalculado}\r\nAngulo final: {anguloFinal}";
 		//if (!erro)
 		//	Log.text = $"Origem\r\nLatitude: {latOrigemStr}\r\nLongitude: {longOrigemStr}\r\nTimestamp: {timestampOrigemStr}\r\n\r\nDestino\r\nLatitude: {latDestinoStr}\r\nLongitude: {longDestinoStr}\r\nTimestamp: {timestampDestinoStr}\r\n\r\nDistância: {distanciaStr}\r\nÂngulo: {anguloStr}\r\n\r\nÂngulo norte: {anguloNorte}\r\nState: {state} ({(processando ? "Processando..." : "Pronto!")})";
 	}
