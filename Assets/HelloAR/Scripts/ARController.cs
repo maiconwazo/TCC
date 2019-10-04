@@ -1,8 +1,8 @@
 ﻿using GoogleARCore;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
+using UnityEngine.SpatialTracking;
 using UnityEngine.UI;
 
 #if UNITY_EDITOR
@@ -12,6 +12,7 @@ using UnityEngine.UI;
 public class ARController : MonoBehaviour
 {
 	private List<DetectedPlane> m_NewTrackedPlanes = new List<DetectedPlane>();
+	public GameObject arCoreDevice;
 	public GameObject GridPrefab;
 	public GameObject Cylinder;
 	public Text Log;
@@ -22,10 +23,9 @@ public class ARController : MonoBehaviour
 	private LocationInfo lastData;
 	private float anguloNorte = 0;
 	private Vector3 objPos;
-	private float norteUsado = 0;
+	private bool anguloConfigurado = false;
 
 	private float anguloCalculado = 0;
-	private float anguloFinal = 0;
 	private float distancia = 0;
 
 
@@ -34,6 +34,7 @@ public class ARController : MonoBehaviour
 	void Start()
 	{
 		UnityEngine.Input.compass.enabled = true;
+
 		var location = UnityEngine.Input.location;
 		location.Start();
 
@@ -60,14 +61,31 @@ public class ARController : MonoBehaviour
 				return;
 			}
 
-			Session.GetTrackables<DetectedPlane>(m_NewTrackedPlanes, TrackableQueryFilter.New);
 			anguloNorte = UnityEngine.Input.compass.magneticHeading;
+
+			if (mainCamera.transform.rotation.eulerAngles.x > 180)
+			{
+				anguloNorte += 180;
+
+				if (anguloNorte > 360)
+					anguloNorte -= 360;
+			}
+
+			if (!anguloConfigurado)
+			{
+				arCoreDevice.transform.rotation = Quaternion.AngleAxis(anguloNorte, Vector3.up);
+				anguloConfigurado = true;
+			}
+
+			Session.GetTrackables<DetectedPlane>(m_NewTrackedPlanes, TrackableQueryFilter.New);
+
+
 			lastData = UnityEngine.Input.location.lastData;
 
 			var objetosProximos = store.retornarListaObjetosProximo(LatitudeAtual(), LongitudeAtual());
 
 			Session.GetTrackables<DetectedPlane>(m_NewTrackedPlanes, TrackableQueryFilter.New);
-			foreach(var plane in m_NewTrackedPlanes)
+			foreach (var plane in m_NewTrackedPlanes)
 			{
 				var parede = Instantiate(GridPrefab, Vector3.zero, Quaternion.identity, transform);
 				parede.GetComponent<GridVisualiser>().Initialize(plane);
@@ -76,13 +94,12 @@ public class ARController : MonoBehaviour
 			foreach (var obj in objetosProximos)
 			{
 				anguloCalculado = calcularAngulo(LatitudeAtual(), LongitudeAtual(), obj.latitude, obj.longitude);
-				anguloFinal = anguloCalculado - anguloNorte;
 
-				if (anguloFinal < 0)
-					anguloFinal += 360;
+				if (anguloCalculado < 0)
+					anguloCalculado += 360;
 
-				distancia = 1;// calcularDistancia(LatitudeAtual(), LongitudeAtual(), obj.latitude, obj.longitude);
-				Vector3 novoVetor = Quaternion.AngleAxis(anguloFinal, Vector3.up) * Vector3.forward * distancia;
+				distancia = calcularDistancia(LatitudeAtual(), LongitudeAtual(), obj.latitude, obj.longitude);
+				Vector3 novoVetor = Quaternion.AngleAxis(anguloCalculado, Vector3.up) * Vector3.forward * distancia;
 
 				Pose pose = new Pose(novoVetor, Quaternion.identity);
 				Anchor anchor = Session.CreateAnchor(pose);
@@ -93,11 +110,6 @@ public class ARController : MonoBehaviour
 				obj.posicionado = true;
 				obj.objeto.SetActive(true);
 				objPos = obj.objeto.transform.position;
-				norteUsado = anguloNorte;
-
-				line.gameObject.SetActive(true);
-				line.SetPosition(0, mainCamera.transform.position);
-				line.SetPosition(1, objPos);
 			}
 
 			Display();
@@ -113,8 +125,8 @@ public class ARController : MonoBehaviour
 		float latitude = 0;
 		try
 		{
-			//latitude = lastData.latitude;
-			latitude = 26.9166f;
+			latitude = lastData.latitude;
+			//latitude = 26.9166f;
 		}
 		catch { }
 
@@ -126,8 +138,8 @@ public class ARController : MonoBehaviour
 		float longitude = 0;
 		try
 		{
-			//longitude = lastData.longitude;
-			longitude = 49.0719f;
+			longitude = lastData.longitude;
+			//longitude = 49.0719f;
 		}
 		catch { }
 
@@ -141,7 +153,7 @@ public class ARController : MonoBehaviour
 
 	private void Display()
 	{
-		Log.text = $"Angulo norte: {anguloNorte}\r\nNorte utilizado: {norteUsado}\r\nAngulo calculado: {anguloCalculado}\r\nAngulo final: {anguloFinal}";
+		Log.text = $"Angulo norte: {anguloNorte}\r\nAngulo calculado: {anguloCalculado}\r\nCamera rotation: {mainCamera.transform.localRotation.eulerAngles}\r\nCamera global rotation: {mainCamera.transform.rotation.eulerAngles}";
 		//if (!erro)
 		//	Log.text = $"Origem\r\nLatitude: {latOrigemStr}\r\nLongitude: {longOrigemStr}\r\nTimestamp: {timestampOrigemStr}\r\n\r\nDestino\r\nLatitude: {latDestinoStr}\r\nLongitude: {longDestinoStr}\r\nTimestamp: {timestampDestinoStr}\r\n\r\nDistância: {distanciaStr}\r\nÂngulo: {anguloStr}\r\n\r\nÂngulo norte: {anguloNorte}\r\nState: {state} ({(processando ? "Processando..." : "Pronto!")})";
 	}

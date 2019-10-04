@@ -24,7 +24,7 @@ public class WSObjectsController : MonoBehaviour
 	{
 		float lat = 26.9165f;
 		float longi = 49.0718f;
-		AdicionarObjeto(lat, longi);	
+		//AdicionarObjeto(lat, longi);	
 	}
 
 	public List<GameObjectGPS> ListaObjetos = new List<GameObjectGPS>();

@@ -2985,6 +2985,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c0c574b3eaf4c643b09b10da3da520b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  arCoreDevice: {fileID: 1008703726}
   GridPrefab: {fileID: 5645351683217264750, guid: 8844e4be21cda68478816ef23c8922fb,
     type: 3}
   Cylinder: {fileID: 677454008545959563, guid: 4e0e8b27e2a2e42428f08511dde05443, type: 3}
